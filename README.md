@@ -40,12 +40,14 @@ Check these first. The top three are required — missing any one and the plugin
 
 ### Optional
 
-| Requirement | Purpose | Without it |
-|---|---|---|
-| `dsh-better-sidebar` (provides the `betterSidebar` service) | Used to register the "group chat" sidebar tab | Chat still works, there is just no sidebar entry — open `/groupchat/` manually |
-| A host-provided same-origin `/api/memes/catalog` | Sticker catalog (proxied, cached 5 minutes) | The sticker picker is empty; text messages and replies are unaffected |
+| Requirement | Author / source | Purpose | Without it |
+|---|---|---|---|
+| `dsh-better-sidebar` (provides the `betterSidebar` service) | **omdsh-dev** · [DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | Used to register the "group chat" sidebar tab | Chat still works, there is just no sidebar entry — open `/groupchat/` manually |
+| A host-provided same-origin `/api/memes/catalog` | Supplied by a host-side sticker plugin, e.g. **FeWOO** · [DeepSeek-meme](https://github.com/FeWOO/DeepSeek-meme) | Sticker catalog (proxied, cached 5 minutes) | The sticker picker is empty; text messages and replies are unaffected |
 
 Services are acquired opportunistically (`ctx.get('webServer')`, `ctx.get('betterSidebar')`) and `cordis.patch.yml` declares `inject: []`, so a missing service never blocks startup — features degrade as the tables describe.
+
+Both optional integrations are third-party plugins, copyright their respective authors. This plugin only calls them through their service interface and HTTP routes — it neither bundles nor modifies their code, and runs degraded as described above when either is absent.
 
 ## Install
 

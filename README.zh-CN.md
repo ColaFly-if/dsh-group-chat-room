@@ -40,12 +40,14 @@
 
 ### 可选
 
-| 前置 | 作用 | 缺了会怎样 |
-|---|---|---|
-| `dsh-better-sidebar`（提供 `betterSidebar` 服务） | 用它注册「聊天群组」侧栏标签 | 群聊照常工作，只是侧栏没有入口，得手动访问 `/groupchat/` |
-| 宿主提供的同源表情服务 `/api/memes/catalog` | 贴纸目录（插件代理 + 5 分钟缓存） | 贴纸面板是空的；发文字、收回复都不受影响 |
+| 前置 | 作者 / 来源 | 作用 | 缺了会怎样 |
+|---|---|---|---|
+| `dsh-better-sidebar`（提供 `betterSidebar` 服务） | **omdsh-dev** · [DSH-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) | 用它注册「聊天群组」侧栏标签 | 群聊照常工作，只是侧栏没有入口，得手动访问 `/groupchat/` |
+| 宿主提供的同源表情服务 `/api/memes/catalog` | 由宿主侧的表情包插件提供，例如 **FeWOO** · [DeepSeek-meme](https://github.com/FeWOO/DeepSeek-meme) | 贴纸目录（插件代理 + 5 分钟缓存） | 贴纸面板是空的；发文字、收回复都不受影响 |
 
 服务都是机会式获取（`ctx.get('webServer')`、`ctx.get('betterSidebar')`），`cordis.patch.yml` 里 `inject: []`，所以缺服务不会卡住插件启动 —— 功能按上表降级。
+
+上面两个都是第三方插件，版权归各自作者所有。本插件只通过服务接口和 HTTP 路由调用它们，不打包、也不修改它们的代码；少了任何一个，本插件都按上表降级运行。
 
 ## 安装
 
