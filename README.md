@@ -26,6 +26,27 @@ Most chat UIs give you one assistant. This one gives you a room: you drop `SOUL_
 - **Personas from one sentence** — describe the room ("a dev team: PM, frontend, backend, QA, design") and it creates the group plus one `SOUL_*.md` per member, then puts them in it.
 - **Local only** — history, config and personas never leave your machine. No telemetry, no external calls except your own model endpoint.
 
+## Prerequisites
+
+Check these first. The top three are required — missing any one and the plugin does not work.
+
+### Required
+
+| Requirement | Why | Without it |
+|---|---|---|
+| DSH in **web form** (desktop app, or `dsh web`) | Every `/groupchat/*` route is mounted on the host's `webServer` service; the plugin never opens its own port | The plugin loads but the page is unreachable. TUI / headless profiles have no such service |
+| DeepSeek API credentials (default `~/.dsh/.credentials.yaml`) | Persona replies are a direct POST to `https://api.deepseek.com/chat/completions` | The page opens and your message is accepted, but nobody answers |
+| At least one `SOUL_*.md` persona file | Group members are the `SOUL_*.md` files found inside the configured workspaces | The member list is empty, so there is nobody to pick |
+
+### Optional
+
+| Requirement | Purpose | Without it |
+|---|---|---|
+| `dsh-better-sidebar` (provides the `betterSidebar` service) | Used to register the "group chat" sidebar tab | Chat still works, there is just no sidebar entry — open `/groupchat/` manually |
+| A host-provided same-origin `/api/memes/catalog` | Sticker catalog (proxied, cached 5 minutes) | The sticker picker is empty; text messages and replies are unaffected |
+
+Services are acquired opportunistically (`ctx.get('webServer')`, `ctx.get('betterSidebar')`) and `cordis.patch.yml` declares `inject: []`, so a missing service never blocks startup — features degrade as the tables describe.
+
 ## Install
 
 This is a DSH host plugin: it mounts inside the DSH web server, with **no extra port and no child process**.
