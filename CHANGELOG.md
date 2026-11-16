@@ -1,25 +1,33 @@
 # Changelog
 
-## 0.3.0
+## 0.1.1（首个公开版本）
 
-- Sticker packs: `/api/stickers` proxied from the host meme service, picker in the composer, `sticker` field persisted on messages, `[STICKER:st_xxx]` parsed from persona replies.
-- `POST /api/forge`: generate a group and its members from one description (`SOUL_*.md` written to the chosen workspace, group created, members added).
-- Prompt: personas now get a sticker menu and a one-sticker-per-message rule.
-- Tests: 51 assertions (sticker API, sticker-only message, persistence, forge validation, no-credential degradation), plus `tests/forge-e2e.mjs` for a live run.
+首个公开发布。此前 0.1.0 – 0.3.0 为内部迭代，能力已并入本版本。
 
-## 0.2.1
+### 群聊
 
-- Tests resolve the plugin root from their own location, so `npm test` works from any working directory.
-- Ship a local `tests/publish-check.mjs` so the repo validates itself (`npm run check:publish`).
-- Add `CONTRIBUTING.md`.
+- 群组 CRUD、成员管理、人格发现（读 workspace 里的 `SOUL_*.md`）。
+- SSE 流式回复：`/groupchat/api/say` 逐条推送 `user_msg` / `typing` / `msg_start` / `delta` / `msg_end`。
+- 页面点「发送」实时渲染回复；刷新走 `/api/history` 全量重绘。
 
-## 0.2.0
+### 成员与人格
 
-- Add `tests/run-tests.mjs`: 44 assertions against a real router with a temp data dir.
-- Remove hard-coded paths: workspace root and credential dir now derive from env / `os.homedir()`.
-- UI: path examples in the workspace picker are now portable.
-- Add MIT license, bilingual README, package metadata.
+- 按一句描述生成整个群和成员（`POST /api/forge`）。
+- 成员级覆盖配置（模型、温度、人设）。
+- 人格插话策略：被 @ 时直接回答，主动插话时带「我觉得」「我这边看是」这类缓冲。
 
-## 0.1.0
+### 贴纸
 
-- First working version: persona discovery, group CRUD, SSE chat, per-persona overrides.
+- `/api/stickers` 代理宿主表情服务，输入框有贴纸选择器，消息持久化 `sticker` 字段。
+- 人格回复里的 `[STICKER:st_xxx]` 会被解析成贴纸。
+
+### 可移植性
+
+- 不写死路径：workspace 根与凭据目录都从 env / `os.homedir()` 推导。
+- MIT 许可、中英双 README、插件元数据、本地 `check:publish` 自检。
+
+### 测试
+
+- `tests/run-tests.mjs`：58 条断言，跑真实 router + 临时数据目录。
+- `tests/live-browser-test.mjs`：无头 Edge + CDP 真跑「打开页面 → 填字 → 点发送 → 等回复 → 截图」。
+- 回归项：发送按钮不得把 MouseEvent 当参数传进 `send()`，否则 payload 会变成 `{"isTrusted":false}`，服务端回 `{"error":"empty"}`，页面永远等不到回复。

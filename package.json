@@ -1,6 +1,11 @@
 {
   "name": "dsh-group-chat-room",
-  "version": "0.3.0",
+  "version": "0.1.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ColaFly-if/dsh-group-chat-room.git"
+  },
+  "homepage": "https://github.com/ColaFly-if/dsh-group-chat-room#readme",
   "description": "Group chat tab for the DeepSeek Harness sidebar: several SOUL_*.md personas in one room, with turn-taking, streaming, sticker packs and personas generated from a description.",
   "type": "module",
   "main": "lib/index.js",
