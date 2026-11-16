@@ -1,0 +1,9 @@
+# dsh-group-chat-room bundle patch
+#
+# DSH 启动时按 bundle 层栈把各插件的 patch 叠起来组成配置树。
+# 本文件就是 dsh-group-chat-room 这一层：把群聊插件的宿主行插进配置树。
+# 侧栏页面由插件自己 serve /groupchat，不需要 client 注入。
+
+- insert:
+    - id: group-chat
+      name: dsh-group-chat-room

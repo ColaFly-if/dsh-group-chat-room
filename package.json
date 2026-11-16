@@ -1,0 +1,50 @@
+{
+  "name": "dsh-group-chat-room",
+  "version": "0.3.0",
+  "description": "Group chat tab for the DeepSeek Harness sidebar: several SOUL_*.md personas in one room, with turn-taking, streaming, sticker packs and personas generated from a description.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "lib/",
+    "web/",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "test": "node tests/run-tests.mjs",
+    "check:publish": "node tests/publish-check.mjs ."
+  },
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "dsh-plugin",
+    "group-chat",
+    "ai-persona",
+    "sse",
+    "sidebar",
+    "local-first"
+  ],
+  "license": "MIT",
+  "author": "YG",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  }
+}

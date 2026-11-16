@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>聊天群组</title>
+<style>
+  :root{ --bg:#14161b; --panel:#1a1d24; --line:#262a33; --text:#e6e8ee; --dim:#8b93a5; --me:#2b5fa8; }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{ background:var(--bg); color:var(--text);
+    font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  header{ flex:0 0 auto; display:flex; align-items:center; gap:8px;
+    padding:9px 12px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header .spacer{flex:1}
+  header button{ background:transparent; border:1px solid var(--line); color:var(--dim);
+    border-radius:8px; padding:3px 9px; font-size:12px; cursor:pointer; }
+  header button:hover{border-color:#3a4150; color:var(--text)}
+  .gear-wrap{position:relative; flex:0 0 auto}
+  #gearBtn{width:26px; padding:0; text-align:center; font-size:14px; line-height:1}
+  .gear-menu{display:none; position:absolute; right:0; top:calc(100% + 6px); z-index:40;
+    min-width:158px; padding:5px; background:#1b1f27; border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.45)}
+  .gear-menu.on{display:block}
+  .gear-menu button{display:block; width:100%; text-align:left; border:0; padding:7px 9px;
+    font-size:13px; border-radius:7px; color:var(--text); background:transparent}
+  .gear-menu button:hover{background:#262b36}
+  .gear-menu button.danger{color:#ff9a9a}
+  .gear-menu button.danger:hover{background:#3a2027}
+  #groupSel{ background:#22262f; color:var(--text); border:1px solid var(--line);
+    border-radius:8px; padding:4px 8px; font-size:13px; font-weight:600; outline:none; max-width:150px; }
+  #groupSel:focus{border-color:#3d4658}
+  #newGroup{ border-color:#3d6fa8; color:#9ec7ff; font-weight:600; }
+  #newGroup:hover{ background:#1d2634; color:#cfe4ff; }
+
+  main{ flex:1 1 auto; overflow-y:auto; padding:14px 12px 6px;
+    display:flex; flex-direction:column; gap:12px; }
+  main::-webkit-scrollbar{width:8px}
+  main::-webkit-scrollbar-thumb{background:#2a2f3a; border-radius:4px}
+
+  .row{display:flex; gap:8px; align-items:flex-start; max-width:100%}
+  .row.me{flex-direction:row-reverse}
+  .ava{ flex:0 0 30px; width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; background:#20242d; border:1px solid var(--line); }
+  .body{display:flex; flex-direction:column; gap:3px; min-width:0; max-width:82%}
+  .row.me .body{align-items:flex-end}
+  .who{font-size:11px; color:var(--dim); padding:0 3px}
+  .bubble{ padding:8px 11px; border-radius:12px; background:#232731;
+    border:1px solid #2b3040; white-space:pre-wrap; word-break:break-word;
+    font-size:14px; line-height:1.55; }
+  .row.me .bubble{background:var(--me); border-color:#356dbf; color:#fff}
+  .bubble.streaming::after{ content:""; display:inline-block; width:6px; height:14px; margin-left:2px;
+    background:currentColor; opacity:.6; vertical-align:-2px; animation:blink 1s steps(2,start) infinite; }
+  @keyframes blink{50%{opacity:0}}
+  .tick{font-size:10px; color:#6b7385}
+  .skipped{font-size:11px; color:#5d6474; padding-left:3px}
+
+  footer{ flex:0 0 auto; border-top:1px solid var(--line); background:var(--panel); padding:10px 12px 12px; }
+  .chips{display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap}
+  .chip{ font-size:12px; padding:3px 9px; border-radius:999px; cursor:pointer;
+    background:#20242d; border:1px solid var(--line); color:var(--dim); }
+  .chip:hover{color:var(--text); border-color:#3a4150}
+  .inputbar{display:flex; gap:8px; align-items:flex-end}
+  textarea{ flex:1; resize:none; min-height:38px; max-height:120px; padding:9px 11px;
+    border-radius:10px; background:#22262f; border:1px solid var(--line);
+    color:var(--text); font:inherit; outline:none; }
+  textarea:focus{border-color:#3d4658}
+  #send{ flex:0 0 auto; height:38px; padding:0 16px; border-radius:10px; border:0;
+    background:var(--me); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  #send:disabled{opacity:.45; cursor:default}
+  .typing{font-size:12px; color:var(--dim); padding:0 4px 6px; height:18px}
+
+  #picker{ position:absolute; inset:0; z-index:20; background:rgba(10,12,16,.9);
+    backdrop-filter:blur(3px); display:none; flex-direction:column; }
+  #picker.open{display:flex}
+  .pk-head{display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line)}
+  .pk-head .t{font-weight:600; font-size:14px}
+  .pk-head .spacer{flex:1}
+  .pk-head button{ background:transparent; border:1px solid var(--line); color:var(--dim);
+    border-radius:8px; padding:3px 9px; font-size:12px; cursor:pointer; }
+  .pk-body{flex:1 1 auto; overflow-y:auto; padding:12px 14px}
+  .sec{margin-bottom:18px}
+  .sec-t{font-size:12px; color:var(--dim); margin-bottom:8px; letter-spacing:.4px}
+  .ws-item{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px;
+    background:#1b1f27; border:1px solid var(--line); margin-bottom:6px;
+    font-size:12px; color:#c3cad8; word-break:break-all; }
+  .ws-item .x{ margin-left:auto; cursor:pointer; color:#7a8194; border:0; background:none;
+    font-size:14px; line-height:1; padding:2px 4px; }
+  .ws-item .x:hover{color:#e5707e}
+  .ws-item.dead{border-color:#4a2c34; background:#1f1a1d}
+  .ws-item .cnt{margin-left:auto; flex:0 0 auto; font-size:11px; color:#6f7789}
+  .ws-item.dead .cnt{color:#e5707e}
+  .ws-add{display:flex; gap:6px; margin-top:6px; align-items:flex-start}
+  .ws-add textarea{ flex:1; min-height:52px; padding:7px 9px; border-radius:8px; background:#22262f;
+    border:1px solid var(--line); color:var(--text); font:12px/1.5 inherit; outline:none; resize:vertical; }
+  .ws-add textarea:focus{border-color:#3d4658}
+  .ws-add button{ flex:0 0 auto; padding:7px 12px; border-radius:8px; border:1px solid var(--line);
+    background:#22262f; color:var(--text); font-size:12px; cursor:pointer; }
+  .ws-add .col{ display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+
+  #browser{ position:absolute; inset:0; z-index:30; background:rgba(8,10,13,.94);
+    backdrop-filter:blur(4px); display:none; flex-direction:column; }
+  #browser.open{display:flex}
+  .br-path{ flex:0 0 auto; padding:8px 14px; font-size:12px; color:#a8b0c0;
+    border-bottom:1px solid var(--line); background:#161920; word-break:break-all; }
+  .br-dir{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px;
+    background:#1b1f27; border:1px solid var(--line); margin-bottom:6px; cursor:pointer; font-size:13px; }
+  .br-dir:hover{border-color:#3d6fa8; background:#1d2634}
+  .br-dir.hidden-dir{opacity:.55}
+  .br-dir .nm{flex:1; word-break:break-all}
+  .br-dir .tag{ font-size:11px; color:#5fd0a0; flex:0 0 auto; }
+  .br-dir .tag.none{color:#5b6273}
+  .addrow{display:flex; gap:6px; margin-top:6px}
+  .addrow input{ flex:1; padding:6px 9px; border-radius:8px; background:#22262f;
+    border:1px solid var(--line); color:var(--text); font-size:12px; outline:none; }
+  .addrow input:focus{border-color:#3d4658}
+  .addrow button,.pk-foot button{ padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:#22262f; color:var(--text); font-size:12px; cursor:pointer; }
+  .addrow button:hover,.pk-foot button:hover{border-color:#3a4150}
+
+  .person{ display:flex; gap:10px; align-items:flex-start; padding:9px 10px;
+    border-radius:10px; background:#1b1f27; border:1px solid var(--line);
+    margin-bottom:7px; cursor:pointer; }
+  .person.on{border-color:#3d6fa8; background:#1d2634}
+  .person input{margin-top:3px}
+  .person .nm{font-size:13px; font-weight:600}
+  .person .ws{font-size:11px; color:#6f7789; margin-left:6px; font-weight:400}
+  .person .ex{font-size:11px; color:#8b93a5; margin-top:2px; line-height:1.45}
+  .empty{font-size:12px; color:#6f7789; padding:8px 2px}
+
+  .pk-foot{ flex:0 0 auto; display:flex; gap:8px; align-items:center;
+    padding:10px 14px; border-top:1px solid var(--line); }
+  .pk-foot .spacer{flex:1}
+  .pk-foot .primary{background:var(--me); border-color:#356dbf; color:#fff; font-weight:600}
+  .pk-foot .danger{color:#e5707e; border-color:#4a2c34}
+  .pk-foot .danger:hover{border-color:#743b45}
+  .pk-foot .danger.armed{ background:#4a2c34; border-color:#e5707e; color:#ffd9df; font-weight:600; }
+
+  .grow{ display:flex; flex-direction:column; gap:4px; padding:9px 10px; border-radius:10px;
+    background:#1b1f27; border:1px solid var(--line); margin-bottom:7px; }
+  .grow.cur{ border-color:#3d6fa8; background:#1d2634; }
+  .grow .top{ display:flex; align-items:center; gap:6px; }
+  .grow .nm{ font-size:13px; font-weight:600; word-break:break-all; }
+  .grow .badge{ font-size:10px; padding:1px 6px; border-radius:999px;
+    background:#2a4667; color:#9ec7ff; flex:0 0 auto; }
+  .grow .meta{ font-size:11px; color:#6f7789; }
+  .grow .ops{ display:flex; gap:6px; margin-top:3px; }
+  .grow .ops button{ padding:3px 9px; border-radius:7px; border:1px solid var(--line);
+    background:#22262f; color:#c3cad8; font-size:11px; cursor:pointer; }
+  .grow .ops button:hover{ border-color:#3a4150; color:var(--text); }
+  .grow .ops .del{ color:#e5707e; border-color:#4a2c34; }
+  .grow .ops .del.armed{ background:#4a2c34; color:#ffd9df; font-weight:600; }
+  .grow .edit{ display:flex; gap:6px; margin-top:2px; }
+  .grow .edit input{ flex:1; padding:5px 8px; border-radius:7px; background:#22262f;
+    border:1px solid var(--line); color:var(--text); font-size:12px; outline:none; }
+  .grow .edit input:focus{ border-color:#3d4658; }
+
+  .person .gear{ margin-left:auto; flex:0 0 auto; padding:2px 7px; border-radius:6px;
+    border:1px solid var(--line); background:#22262f; color:#8b93a5; font-size:12px; cursor:pointer; }
+  .person .gear:hover{ color:var(--text); border-color:#3a4150; }
+  .person .tagline{ font-size:11px; color:#5fd0a0; margin-top:2px; }
+  .person .off{ color:#e5707e; }
+  .botedit{ display:flex; flex-direction:column; gap:6px; padding:10px; margin:2px 0 8px;
+    border-radius:10px; background:#161a21; border:1px solid #2f3644; }
+  .botedit .f{ display:flex; gap:6px; align-items:center; }
+  .botedit .f label{ flex:0 0 44px; font-size:11px; color:#8b93a5; }
+  .botedit .f input[type=text]{ flex:1; padding:5px 8px; border-radius:7px; background:#22262f;
+    border:1px solid var(--line); color:var(--text); font-size:12px; outline:none; }
+  .botedit .f input[type=text]:focus{ border-color:#3d4658; }
+  .botedit .skl{ display:flex; flex-direction:column; gap:4px; margin-top:2px; }
+  .botedit .skl label{ display:flex; gap:6px; align-items:flex-start; font-size:12px; color:#c3cad8;
+    flex:0 0 auto; cursor:pointer; padding:4px 6px; border-radius:6px; background:#1b1f27; }
+  .botedit .skl label:hover{ background:#1d2634; }
+  .botedit .skl .sd{ color:#6f7789; font-size:11px; }
+  .botedit .act{ display:flex; gap:6px; margin-top:2px; }
+  .botedit .act button{ padding:4px 11px; border-radius:7px; border:1px solid var(--line);
+    background:#22262f; color:#c3cad8; font-size:12px; cursor:pointer; }
+  .botedit .act .save{ background:#2b5fa8; border-color:#356dbf; color:#fff; font-weight:600; }
+.sticker-panel{display:none;max-height:190px;overflow:auto;border-top:1px solid #eee;padding:6px 8px;background:#fafafa}
+.sticker-panel.on{display:block}
+.sticker-panel .pk-t{font-size:11px;color:#888;margin:6px 0 4px}
+.st-grid{display:flex;flex-wrap:wrap;gap:6px}
+.st-grid img{width:52px;height:52px;object-fit:contain;border-radius:8px;background:#fff;cursor:pointer;border:1px solid #eee}
+.st-grid img:hover{border-color:#4a9eff}
+img.sticker{width:112px;height:112px;object-fit:contain;display:block;margin:2px 0}
+.bubble.only-st{display:none}
+#stickerBtn{width:38px;height:38px;min-width:38px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:17px;line-height:1;flex:0 0 auto}
+</style>
+</head>
+<body>
+  <header>
+    <select id="groupSel"></select>
+    <button id="newGroup" title="新建一个群">+ 新群</button>
+    <button id="members">成员 <span id="mcount">0</span></button>
+    <span class="spacer"></span>
+    <div class="gear-wrap">
+      <button id="gearBtn" title="设置">⚙</button>
+      <div id="gearMenu" class="gear-menu">
+        <button id="menuReset" class="danger">清空聊天记录</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="list"></main>
+
+  <footer>
+    <div class="chips" id="chips"></div>
+    <div class="typing" id="typing"></div>
+    <div id="stickerPanel" class="sticker-panel"></div>
+    <div class="inputbar">
+      <button id="stickerBtn" title="表情包">🙂</button>
+      <textarea id="ta" rows="1" placeholder="说点什么…（Enter 发送，Shift+Enter 换行）"></textarea>
+      <button id="send">发送</button>
+    </div>
+  </footer>
+
+  <div id="browser">
+    <div class="pk-head">
+      <span class="t">选择目录</span>
+      <span class="spacer"></span>
+      <button id="brClose">关闭</button>
+    </div>
+    <div class="br-path" id="brPath"></div>
+    <div class="pk-body" id="brList"></div>
+    <div class="pk-foot">
+      <button id="brUp">↑ 上一级</button>
+      <span class="spacer"></span>
+      <button id="brAdd" class="primary">添加这个目录</button>
+    </div>
+  </div>
+
+  <div id="picker">
+    <div class="pk-head">
+      <span class="t" id="pkTitle">群设置</span>
+      <span class="spacer"></span>
+      <button id="pkClose">关闭</button>
+    </div>
+    <div class="pk-body">
+      <div class="sec">
+        <div class="sec-t">群管理 <span id="gCount"></span></div>
+        <div id="gList"></div>
+        <div class="addrow" style="margin-top:8px">
+          <input id="groupName" placeholder="新群名字">
+          <button id="groupCreate">新建</button>
+        </div>
+        <div class="addrow" style="margin-top:6px">
+          <input id="groupDesc" placeholder="当前群的简介，成员会读到">
+          <button id="groupDescBtn">保存简介</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-t">AI 生成成员 / 群</div>
+        <textarea id="forgeDesc" rows="2" placeholder="描述你要的群，例：一个程序开发组，要有产品、前端、后端、测试、设计"></textarea>
+        <div class="addrow" style="margin-top:6px">
+          <input id="forgeWs" placeholder="写到哪个工作区（留空=第一个）">
+          <button id="forgeGroup" class="primary">建群 + 成员</button>
+          <button id="forgeMember">只加一个成员</button>
+        </div>
+        <div id="forgeMsg" style="font-size:12px;color:#888;margin-top:6px"></div>
+      </div>
+      <div class="sec">
+        <div class="sec-t">扫描的工作区</div>
+        <div id="wsList"></div>
+        <div class="ws-add">
+          <textarea id="wsInput" rows="2" placeholder="可以一次贴多个，换行 / 分号 / 逗号都认&#10;例如：/path/to/workspace-a; /path/to/workspace-b"></textarea>
+          <div class="col">
+            <button id="wsAdd">批量添加</button>
+            <button id="wsBrowse">浏览…</button>
+          </div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-t">本群成员 <span id="pCount"></span></div>
+        <div id="pList"></div>
+      </div>
+    </div>
+    <div class="pk-foot">
+      <button id="selAll">全选</button>
+      <button id="selNone">全不选</button>
+      <span class="spacer"></span>
+      <button id="groupDelete" class="danger">删群</button>
+      <button id="pkSave" class="primary">保存成员</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  var MEMBERS = { user: { name: '可乐', avatar: '👤', color: '#2b5fa8' } };
+  var ROSTER = [];
+  var GROUP = null;
+  var GROUPS = [];
+
+  var list = document.getElementById('list');
+  var ta = document.getElementById('ta');
+  var sendBtn = document.getElementById('send');
+  var typingEl = document.getElementById('typing');
+  var chipsEl = document.getElementById('chips');
+  var mcountEl = document.getElementById('mcount');
+  var groupSel = document.getElementById('groupSel');
+  var streaming = {};
+  var typingWho = {};
+
+  var picker = document.getElementById('picker');
+  var pkTitle = document.getElementById('pkTitle');
+  var wsList = document.getElementById('wsList');
+  var pList = document.getElementById('pList');
+  var pCount = document.getElementById('pCount');
+  var wsInput = document.getElementById('wsInput');
+  var groupName = document.getElementById('groupName');
+  var groupRename = document.getElementById('groupRename');
+  var disc = { workspaces: [], personas: [], selected: [] };
+  var BOTS = [];
+  var SKILLS = [];
+  var editingBotId = null;
+
+  async function jget(path, opts) {
+    var r = await fetch(path, opts);
+    var t = await r.text();
+    try { return JSON.parse(t); }
+    catch (e) {
+      var msg = t && t.length < 80 ? t.trim() : ('HTTP ' + r.status);
+      throw new Error('后端没有这个接口（' + msg + '）');
+    }
+  }
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function hhmm(ts) { var d = new Date(ts||Date.now()); var h=d.getHours(), m=d.getMinutes(); return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; }
+  function scrollDown() { list.scrollTop = list.scrollHeight; }
+  function metaOf(id) { return MEMBERS[id] || { name: id, avatar: '·', color: '#666' }; }
+
+  function stickerImg(id) {
+    var im = el("img", "sticker");
+    im.src = "/api/memes/assets/" + encodeURIComponent(id) + "?size=150";
+    im.alt = "表情"; im.title = id; im.loading = "lazy";
+    return im;
+  }
+
+  function addMessage(m) {
+    var who = m.who, meta = metaOf(who);
+    var row = el('div', 'row' + (who === 'user' ? ' me' : ''));
+    var ava = el('div', 'ava', meta.avatar);
+    var body = el("div", "body");
+    if (who !== "user") body.appendChild(el("div", "who", meta.name));
+    if (m.sticker) body.appendChild(stickerImg(m.sticker));
+    var b = el("div", "bubble" + (m.text ? "" : " only-st"), m.text || "");
+    if (who === "user") b.appendChild(el("div", "tick", " " + hhmm(m.ts)));
+    body.appendChild(b);
+    row.appendChild(ava); row.appendChild(body);
+    list.appendChild(row); scrollDown();
+    return b;
+  }
+
+  function renderTyping() {
+    var names = Object.keys(typingWho).filter(function (k) { return typingWho[k]; });
+    typingEl.textContent = names.length ? names.map(function (k) { return metaOf(k).name; }).join('、') + ' 正在输入…' : '';
+  }
+
+  function handle(ev) {
+    var t = ev.type;
+    if (t === 'user_msg') return;
+    if (t === 'typing') { typingWho[ev.who] = !!ev.on; renderTyping(); return; }
+    if (t === 'msg_start') {
+      var b = addMessage({ who: ev.who, text: '', ts: Date.now() });
+      b.classList.add('streaming'); streaming[ev.who] = b; return;
+    }
+    if (t === 'delta') {
+      var b2 = streaming[ev.who];
+      if (!b2) { b2 = addMessage({ who: ev.who, text: '', ts: Date.now() }); b2.classList.add('streaming'); streaming[ev.who] = b2; }
+      b2.textContent += ev.text; scrollDown(); return;
+    }
+    if (t === "msg_end") {
+      var b3 = streaming[ev.who];
+      if (!b3) b3 = addMessage({ who: ev.who, text: "", ts: Date.now() });
+      if (b3) {
+        b3.textContent = ev.text || "";
+        b3.classList.remove("streaming");
+        if (ev.sticker) {
+          var holder = b3.parentNode;
+          if (holder) holder.insertBefore(stickerImg(ev.sticker), b3);
+          if (!ev.text) b3.classList.add("only-st");
+        }
+        delete streaming[ev.who];
+      }
+      scrollDown(); return;
+    }
+    if (t === 'skipped') {
+      return; // 内部调度细节不上屏
+      var row = el('div', 'row');
+      row.appendChild(el('div', 'ava', metaOf(ev.who).avatar));
+      var bd = el('div', 'body');
+      bd.appendChild(el('div', 'skipped', metaOf(ev.who).name + ' 没接话'));
+      row.appendChild(bd); list.appendChild(row); scrollDown(); return;
+    }
+    if (t === 'error') {
+      var r2 = el('div', 'row'); var bd2 = el('div', 'body');
+      bd2.appendChild(el('div', 'skipped', '［出错了］' + (ev.text || '')));
+      r2.appendChild(bd2); list.appendChild(r2); scrollDown();
+    }
+  }
+
+  function setBusy(on) { sendBtn.disabled = on; sendBtn.textContent = on ? '…' : '发送'; }
+
+  function buildChips() {
+    chipsEl.innerHTML = '';
+    if (ROSTER.length > 1) {
+      var d = el('span', 'chip', '你们几个聊');
+      d.addEventListener('click', function () { ta.value = '你们几个聊会儿，我听着'; ta.focus(); });
+      chipsEl.appendChild(d);
+    }
+    ROSTER.forEach(function (p) {
+      var c = el('span', 'chip', '@' + p.name);
+      c.addEventListener('click', function () { ta.value = '@' + p.name + ' ' + ta.value; ta.focus(); });
+      chipsEl.appendChild(c);
+    });
+  }
+
+  function renderGroups() {
+    groupSel.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      var o = el('option', null, g.name + '（' + g.members + '）');
+      o.value = g.id;
+      if (GROUP && g.id === GROUP.id) o.selected = true;
+      groupSel.appendChild(o);
+    });
+  }
+
+  async function loadState() {
+    var st = await jget('api/state');
+    GROUPS = st.groups || [];
+    GROUP = st.group || null;
+    ROSTER = st.roster || [];
+    if (st.members) Object.keys(st.members).forEach(function (k) { MEMBERS[k] = st.members[k]; });
+    mcountEl.textContent = ROSTER.length;
+    renderGroups();
+    buildChips();
+    return st;
+  }
+
+  async function loadHistory() {
+    list.innerHTML = '';
+    streaming = {}; typingWho = {}; renderTyping();
+    if (!ROSTER.length) {
+      var tip = el('div', 'row'); var bd = el('div', 'body');
+      bd.appendChild(el('div', 'skipped', '这个群还没选成员，点上面「成员」勾几个进来'));
+      tip.appendChild(bd); list.appendChild(tip);
+      return;
+    }
+    try {
+      var h = await jget('api/history?g=' + encodeURIComponent(GROUP.id));
+      (h.history || []).forEach(addMessage);
+    } catch (e) {}
+    scrollDown();
+  }
+
+  async function send(extra) {
+    var payload = extra || null;
+    // 防御：若被当成事件处理器调用，extra 会是 Event，一律忽略
+    if (payload && (payload instanceof Event || typeof payload.preventDefault === 'function')) payload = null;
+    if (!payload) {
+      var text = ta.value.trim();
+      if (!text || !GROUP) return;
+      ta.value = ""; ta.style.height = "auto";
+      addMessage({ who: "user", text: text, ts: Date.now() });
+      payload = { text: text, group: GROUP.id };
+    } else if (!GROUP) return;
+    setBusy(true);
+    // 整段读取会等到服务端说完才回来，中间给个可见提示，别让人以为没反应
+    var waitNote = el('div', 'row');
+    var waitBody = el('div', 'body');
+    waitBody.appendChild(el('div', 'skipped', '…等他们回话'));
+    waitNote.appendChild(waitBody); list.appendChild(waitNote); scrollDown();
+    try {
+      var res = await fetch("api/say", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok || !res.body) {
+        var e = await res.text();
+        var row = el('div', 'row'); var b = el('div', 'body');
+        b.appendChild(el('div', 'skipped', '［请求失败］' + e));
+        row.appendChild(b); list.appendChild(row); setBusy(false); return;
+      }
+      // 有的运行环境会把 SSE 整段缓冲到结束才交给浏览器，逐块读会拿到空流，\r\n      // 于是「发完没反应、刷新才看到」。这里直接取完整响应，再按事件逐条渲染。\r\n      var raw = await res.text();\r\n      var parts = raw.split("\n\n");\r\n      for (var k = 0; k < parts.length; k += 1) {\r\n        var chunk = parts[k].trim();\r\n        if (chunk.indexOf("data:") !== 0) continue;\r\n        try { handle(JSON.parse(chunk.slice(5).trim())); } catch (err) {}\r\n      }\r\n      var reader = null, dec = null, buf = "";
+      // 整段读取响应再逐条渲染：有的环境会把 SSE 缓冲到结束，逐块读会拿到空流
+      var raw = await res.text();
+      var parts = raw.split("\n\n");
+      for (var k = 0; k < parts.length; k += 1) {
+        var chunk = parts[k].trim();
+        if (chunk.indexOf("data:") !== 0) continue;
+        try { handle(JSON.parse(chunk.slice(5).trim())); }
+        catch (err) { var er = el('div','row'); var eb = el('div','body');
+          eb.appendChild(el('div','skipped','［渲染失败］' + (err && err.message)));
+          er.appendChild(eb); list.appendChild(er); }
+      }
+      while (false) {
+        var step = await reader.read(); if (step.done) break;
+        buf += dec.decode(step.value, { stream: true });
+        var i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          var chunk = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
+          if (chunk.indexOf('data:') !== 0) continue;
+          try { handle(JSON.parse(chunk.slice(5).trim())); } catch (err) {}
+        }
+      }
+    } catch (err) {
+      var r2 = el('div', 'row'); var b2 = el('div', 'body');
+      b2.appendChild(el('div', 'skipped', '［网络错误］' + err.message));
+      r2.appendChild(b2); list.appendChild(r2);
+    }
+    if (waitNote && waitNote.parentNode) waitNote.parentNode.removeChild(waitNote);
+    // 兜底：不管流式成功与否，统一以历史接口为准重绘一次（刷新能看到 = 这条一定能拿到）
+    try { await loadHistory(); } catch (e) {}
+    typingWho = {}; renderTyping(); setBusy(false);
+  }
+
+
+  // ---------- 表情包 ----------
+  var STICKERS = null;
+  var stickerPanel = document.getElementById("stickerPanel");
+  var stickerBtn = document.getElementById("stickerBtn");
+
+  function sendSticker(id) {
+    if (!GROUP) return;
+    addMessage({ who: "user", text: "", sticker: id, ts: Date.now() });
+    stickerPanel.classList.remove("on");
+    send({ sticker: id, group: GROUP.id });
+  }
+
+  async function renderStickers() {
+    if (STICKERS) { stickerPanel.classList.toggle("on"); return; }
+    stickerPanel.textContent = "载入表情…";
+    stickerPanel.classList.add("on");
+    try {
+      var r = await fetch("api/stickers", { headers: { accept: "application/json" } });
+      STICKERS = await r.json();
+    } catch (e) { STICKERS = { packs: [] }; }
+    stickerPanel.textContent = "";
+    var packs = (STICKERS && STICKERS.packs) || [];
+    if (!packs.length) { stickerPanel.appendChild(el("div", "pk-t", "没取到表情包")); return; }
+    packs.forEach(function (pack) {
+      stickerPanel.appendChild(el("div", "pk-t", pack.name || pack.id || "表情"));
+      var grid = el("div", "st-grid");
+      (pack.stickers || []).forEach(function (s) {
+        if (!s || !s.id) return;
+        var im = el("img");
+        im.src = "/api/memes/assets/" + encodeURIComponent(s.id) + "?size=96";
+        im.alt = s.name || "表情";
+        im.title = (s.name || "") + (s.meaning ? "\n" + s.meaning : "");
+        im.loading = "lazy";
+        im.addEventListener("click", function () { sendSticker(s.id); });
+        grid.appendChild(im);
+      });
+      stickerPanel.appendChild(grid);
+    });
+  }
+
+  if (stickerBtn) stickerBtn.addEventListener("click", renderStickers);
+
+  // ---------- AI 生成成员 / 群 ----------
+  var forgeDesc = document.getElementById("forgeDesc");
+  var forgeWs = document.getElementById("forgeWs");
+  var forgeMsg = document.getElementById("forgeMsg");
+
+  async function forge(mode) {
+    if (!forgeDesc) return;
+    var desc = forgeDesc.value.trim();
+    if (desc.length < 2) { forgeMsg.textContent = "先写一句你要什么样的群或成员"; return; }
+    forgeMsg.textContent = "生成中…";
+    try {
+      var r = await fetch("api/forge", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ desc: desc, mode: mode, workspace: (forgeWs && forgeWs.value.trim()) || "" })
+      });
+      var j = await r.json();
+      if (!r.ok) { forgeMsg.textContent = "失败：" + (j.error || r.status); return; }
+      var names = (j.members || []).map(function (m) { return m.fullName || m.name; }).join("、");
+      forgeMsg.textContent = "好了：" + (j.group ? "群「" + j.group.name + "」" : "成员") + " " + names;
+      forgeDesc.value = "";
+      await loadState(); await loadHistory();
+      if (typeof loadDisc === "function") { try { await loadDisc(); } catch (e) {} }
+    } catch (e) {
+      forgeMsg.textContent = "网络错误：" + e.message;
+    }
+  }
+
+  var fg = document.getElementById("forgeGroup");
+  var fm = document.getElementById("forgeMember");
+  if (fg) fg.addEventListener("click", function () { forge("group"); });
+  if (fm) fm.addEventListener("click", function () { forge("member"); });
+  // ---------- 群管理列表 ----------
+  var editingGroupId = null;
+  var armedDel = null;
+  var armedTimer = null;
+
+  function timeAgo(ts) {
+    if (!ts) return '没聊过';
+    var d = Date.now() - ts;
+    if (d < 60000) return '刚刚';
+    if (d < 3600000) return Math.floor(d / 60000) + ' 分钟前';
+    if (d < 86400000) return Math.floor(d / 3600000) + ' 小时前';
+    var dt = new Date(ts);
+    return (dt.getMonth() + 1) + '/' + dt.getDate();
+  }
+
+  function renderGroupList() {
+    var box = document.getElementById('gList');
+    if (!box) return;
+    var cnt = document.getElementById('gCount');
+    if (cnt) cnt.textContent = '(' + GROUPS.length + ')';
+    box.innerHTML = '';
+    GROUPS.forEach(function (g) {
+      var isCur = !!(GROUP && g.id === GROUP.id);
+      var row = el('div', 'grow' + (isCur ? ' cur' : ''));
+
+      var top = el('div', 'top');
+      top.appendChild(el('span', 'nm', g.name));
+      if (isCur) top.appendChild(el('span', 'badge', '当前'));
+      row.appendChild(top);
+      row.appendChild(el('div', 'meta', g.members + ' 人 · ' + g.messages + ' 条 · ' + timeAgo(g.lastTs)));
+
+      if (editingGroupId === g.id) {
+        var ed = el('div', 'edit');
+        var inp = el('input');
+        inp.value = g.name;
+        var ok = el('button', null, '确定');
+        var no = el('button', null, '取消');
+        ok.addEventListener('click', async function () {
+          var v = inp.value.trim();
+          editingGroupId = null;
+          if (v && v !== g.name) await postJson('api/groups', { action: 'update', id: g.id, name: v });
+          await loadState();
+          await loadDisc();
+        });
+        no.addEventListener('click', function () { editingGroupId = null; renderGroupList(); });
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') ok.click(); if (e.key === 'Escape') no.click(); });
+        ed.appendChild(inp); ed.appendChild(ok); ed.appendChild(no);
+        row.appendChild(ed);
+        setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 0);
+      } else {
+        var ops = el('div', 'ops');
+        if (!isCur) {
+          var sw = el('button', null, '切换');
+          sw.addEventListener('click', async function () {
+            await postJson('api/groups', { action: 'activate', id: g.id });
+            await loadState(); await loadHistory(); await loadDisc();
+          });
+          ops.appendChild(sw);
+        }
+        var rn = el('button', null, '改名');
+        rn.addEventListener('click', function () { editingGroupId = g.id; renderGroupList(); });
+        ops.appendChild(rn);
+
+        var del = el('button', 'del' + (armedDel === g.id ? ' armed' : ''), armedDel === g.id ? '确定删？' : '删除');
+        del.addEventListener('click', async function () {
+          if (armedDel !== g.id) {
+            armedDel = g.id;
+            if (armedTimer) clearTimeout(armedTimer);
+            armedTimer = setTimeout(function () { armedDel = null; renderGroupList(); }, 4000);
+            renderGroupList();
+            return;
+          }
+          armedDel = null;
+          if (armedTimer) { clearTimeout(armedTimer); armedTimer = null; }
+          await postJson('api/groups', { action: 'delete', id: g.id });
+          await loadState(); await loadHistory(); await loadDisc();
+        });
+        ops.appendChild(del);
+        row.appendChild(ops);
+      }
+      box.appendChild(row);
+    });
+  }
+
+  // ---------- 设置面板 ----------
+  function renderDisc() {
+    pkTitle.textContent = GROUP ? '群设置 · ' + GROUP.name : '群设置';
+    var gd = document.getElementById('groupDesc');
+    if (gd) gd.value = (GROUP && GROUP.desc) ? GROUP.desc : '';
+    renderGroupList();
+
+    wsList.innerHTML = '';
+    var st = disc.status || [];
+    var stMap = {};
+    st.forEach(function (s) { stMap[s.path] = s; });
+    if (!disc.workspaces.length) wsList.appendChild(el('div', 'empty', '还没有工作区'));
+    disc.workspaces.forEach(function (w) {
+      var info = stMap[w] || { exists: true, personas: 0 };
+      var row = el('div', 'ws-item' + (info.exists ? '' : ' dead'));
+      row.appendChild(el('span', '', w));
+      row.appendChild(el('span', 'cnt', info.exists ? (info.personas + ' 个人格') : '路径不存在'));
+      var x = el('button', 'x', '×');
+      x.title = '移除';
+      x.addEventListener('click', async function () {
+        var next = disc.workspaces.filter(function (y) { return y !== w; });
+        await postJson('api/workspaces', { workspaces: next });
+        await loadDisc();
+      });
+      row.appendChild(x);
+      wsList.appendChild(row);
+    });
+
+    pList.innerHTML = '';
+    var selSet = new Set(disc.selected || []);
+    pCount.textContent = '(' + BOTS.length + ')';
+    if (!BOTS.length) pList.appendChild(el('div', 'empty', '这些工作区里没找到 SOUL_*.md'));
+    BOTS.forEach(function (p) {
+      var on = selSet.has(p.id);
+      var row = el('div', 'person' + (on ? ' on' : '') + (p.enabled ? '' : ' disabled-bot'));
+
+      var cb = el('input'); cb.type = 'checkbox'; cb.className = 'pick';
+      cb.checked = on; cb.value = p.id;
+      cb.addEventListener('change', function () { row.classList.toggle('on', cb.checked); });
+
+      var box = el('div');
+      var nm = el('div', 'nm', (p.alias || p.name));
+      nm.appendChild(el('span', 'ws', p.workspace));
+      box.appendChild(nm);
+      if (p.desc) box.appendChild(el('div', 'ex', p.desc));
+      else if (p.excerpt) box.appendChild(el('div', 'ex', p.excerpt));
+      if (!p.enabled) box.appendChild(el('div', 'tagline off', '已停用 · 不进群发言'));
+      else if (p.skills && p.skills.length) box.appendChild(el('div', 'tagline', '技能：' + p.skills.join('、')));
+
+      var gear = el('button', 'gear', editingBotId === p.id ? '收起' : '设置');
+      gear.addEventListener('click', function (e) {
+        e.stopPropagation();
+        editingBotId = editingBotId === p.id ? null : p.id;
+        renderDisc();
+      });
+
+      row.appendChild(cb); row.appendChild(box); row.appendChild(gear);
+      pList.appendChild(row);
+
+      if (editingBotId === p.id) pList.appendChild(renderBotEditor(p));
+    });
+  }
+
+  async function postJson(path, body) {
+    try {
+      return await jget(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    } catch (e) {
+      console.warn('[group-chat]', path, e.message);
+      return null;
+    }
+  }
+
+  async function loadDisc() {
+    var q = GROUP ? ('?g=' + encodeURIComponent(GROUP.id)) : '';
+    try {
+      disc = await jget('api/discover' + q);
+      try {
+        var b = await jget('api/bots' + q);
+        BOTS = b.bots || [];
+        SKILLS = b.skills || [];
+      } catch (e2) {
+        BOTS = disc.personas || [];
+        SKILLS = [];
+      }
+      renderDisc();
+    } catch (e) {
+      pList.innerHTML = '';
+      pList.appendChild(el('div', 'empty', '读取失败：' + e.message));
+    }
+  }
+
+  document.getElementById('members').addEventListener('click', function () {
+    picker.classList.add('open');
+    loadDisc();
+  });
+  document.getElementById('pkClose').addEventListener('click', function () { picker.classList.remove('open'); });
+
+  // ---------- 目录浏览器 ----------
+  var browser = document.getElementById('browser');
+  var brPath = document.getElementById('brPath');
+  var brList = document.getElementById('brList');
+  var brState = { path: '', parent: null, dirs: [], atDrives: true };
+
+  async function brLoad(p) {
+    brList.innerHTML = '';
+    brList.appendChild(el('div', 'empty', '读取中…'));
+    var d;
+    try {
+      d = await jget('api/browse?path=' + encodeURIComponent(p || ''));
+    } catch (e) {
+      brList.innerHTML = '';
+      brList.appendChild(el('div', 'empty', '读取失败：' + e.message));
+      return;
+    }
+    if (!d || typeof d !== 'object') d = { error: '后端返回异常' };
+    if (d.error) {
+      brList.innerHTML = '';
+      brList.appendChild(el('div', 'empty', d.error + '：' + (d.path || p)));
+      return;
+    }
+    brState = d;
+    brPath.textContent = d.atDrives ? '此电脑' : d.path;
+    document.getElementById('brUp').disabled = d.atDrives;
+    document.getElementById('brAdd').disabled = d.atDrives;
+
+    brList.innerHTML = '';
+    if (!d.dirs.length) brList.appendChild(el('div', 'empty', '没有子目录'));
+    d.dirs.forEach(function (x) {
+      var row = el('div', 'br-dir' + (x.hidden ? ' hidden-dir' : ''));
+      row.appendChild(el('span', '', '📁'));
+      row.appendChild(el('span', 'nm', x.name));
+      var tag;
+      if (x.personas > 0) tag = el('span', 'tag', x.personas + ' 个人格');
+      else { tag = el('span', 'tag none', '—'); }
+      row.appendChild(tag);
+      row.addEventListener('click', function () { brLoad(x.path); });
+      brList.appendChild(row);
+    });
+  }
+
+  document.getElementById('wsBrowse').addEventListener('click', function () {
+    var start = (disc.workspaces && disc.workspaces.length) ? disc.workspaces[0] : '';
+    browser.classList.add('open');
+    brLoad(start);
+  });
+  document.getElementById('brClose').addEventListener('click', function () { browser.classList.remove('open'); });
+  document.getElementById('brUp').addEventListener('click', function () {
+    if (brState.atDrives) return;
+    brLoad(brState.parent || '');
+  });
+  document.getElementById('brAdd').addEventListener('click', async function () {
+    if (!brState.path) return;
+    await postJson('api/workspaces', { text: brState.path });
+    browser.classList.remove('open');
+    await loadDisc();
+  });
+
+  document.getElementById('wsAdd').addEventListener('click', async function () {
+    var v = (wsInput.value || '').trim();
+    if (!v) { wsInput.focus(); return; }
+    await postJson('api/workspaces', { text: v });
+    wsInput.value = '';
+    await loadDisc();
+  });
+
+  document.getElementById('newGroup').addEventListener('click', async function () {
+    var used = {};
+    GROUPS.forEach(function (g) {
+      var m = /^群\s*(\d+)$/.exec(g.name);
+      if (m) used[Number(m[1])] = true;
+    });
+    var n = 1;
+    while (used[n]) n++;
+    var name = '群 ' + n;
+    var r = await postJson('api/groups', { action: 'create', name: name, members: [] });
+    if (!r || !r.group) return;
+    await loadState();
+    await loadHistory();
+    picker.classList.add('open');
+    await loadDisc();
+    var gn = document.getElementById('groupName');
+    if (gn) gn.placeholder = '改名（当前：' + name + '）';
+  });
+
+  document.getElementById('groupCreate').addEventListener('click', async function () {
+    var name = (groupName.value || '').trim();
+    if (!name) { groupName.focus(); return; }
+    var r = await postJson('api/groups', { action: 'create', name: name, members: [] });
+    groupName.value = '';
+    if (r && r.group) {
+      await loadState();
+      await loadHistory();
+      await loadDisc();
+    }
+  });
+
+  document.getElementById('groupDescBtn').addEventListener('click', async function () {
+    if (!GROUP) return;
+    var d = (document.getElementById('groupDesc').value || '').trim();
+    await postJson('api/groups', { action: 'update', id: GROUP.id, desc: d });
+    await loadState();
+    await loadDisc();
+    if (GROUP) GROUP.desc = d;
+  });
+
+  // 删群：两段式确认，三秒内点第二下才真删（历史和成员会一起没）
+  var delBtn = document.getElementById('groupDelete');
+  var delArmed = null;
+  var delTimer = null;
+  function disarmDelete() {
+    delArmed = null;
+    if (delTimer) { clearTimeout(delTimer); delTimer = null; }
+    delBtn.textContent = '删群';
+    delBtn.classList.remove('armed');
+  }
+  delBtn.addEventListener('click', async function () {
+    if (!GROUP) return;
+    if (delArmed !== GROUP.id) {
+      delArmed = GROUP.id;
+      delBtn.textContent = '确定删「' + GROUP.name + '」？再点一次';
+      delBtn.classList.add('armed');
+      if (delTimer) clearTimeout(delTimer);
+      delTimer = setTimeout(disarmDelete, 4000);
+      return;
+    }
+    disarmDelete();
+    var r = await postJson('api/groups', { action: 'delete', id: GROUP.id });
+    if (r && r.ok) {
+      picker.classList.remove('open');
+      await loadState();
+      await loadHistory();
+    }
+  });
+
+  document.getElementById('selAll').addEventListener('click', function () {
+    document.querySelectorAll('#pList input.pick').forEach(function (cb) { cb.checked = true; cb.closest('.person').classList.add('on'); });
+  });
+  document.getElementById('selNone').addEventListener('click', function () {
+    document.querySelectorAll('#pList input.pick').forEach(function (cb) { cb.checked = false; cb.closest('.person').classList.remove('on'); });
+  });
+  document.getElementById('pkSave').addEventListener('click', async function () {
+    if (!GROUP) return;
+    var ids = [];
+    document.querySelectorAll('#pList input.pick').forEach(function (cb) { if (cb.checked) ids.push(cb.value); });
+    await postJson('api/groups', { action: 'update', id: GROUP.id, members: ids });
+    picker.classList.remove('open');
+    await loadState();
+    await loadHistory();
+  });
+
+  // ---------- 群切换 ----------
+  groupSel.addEventListener('change', async function () {
+    var id = groupSel.value;
+    await postJson('api/groups', { action: 'activate', id: id });
+    await loadState();
+    await loadHistory();
+    ta.focus();
+  });
+
+  // ---------- 启动 ----------
+  // 注意：直接把 send 当监听器会把 MouseEvent 当成 extra 传进去，导致 payload 变成事件对象
+  sendBtn.addEventListener('click', function () { send(); });
+  ta.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  ta.addEventListener('input', function () {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
+  });
+  // ---------- 设置（齿轮）菜单 ----------
+  var gearBtn = document.getElementById("gearBtn");
+  var gearMenu = document.getElementById("gearMenu");
+  var menuReset = document.getElementById("menuReset");
+  var resetLabel = menuReset.textContent;
+  var armResetTimer = null;
+
+  function closeGear() {
+    if (gearMenu) gearMenu.classList.remove("on");
+    if (armResetTimer) { clearTimeout(armResetTimer); armResetTimer = null; }
+    if (menuReset) menuReset.textContent = resetLabel;
+  }
+
+  if (gearBtn) gearBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    gearMenu.classList.toggle("on");
+    if (!gearMenu.classList.contains("on")) closeGear();
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!gearMenu || !gearMenu.classList.contains("on")) return;
+    if (gearMenu.contains(e.target) || e.target === gearBtn) return;
+    closeGear();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeGear(); });
+
+  // 不用弹窗：第一下变成确认，4 秒内再点一下才真清
+  menuReset.addEventListener("click", async function () {
+    if (!GROUP) { closeGear(); return; }
+    if (!armResetTimer) {
+      menuReset.textContent = "再点一次确认清空";
+      armResetTimer = setTimeout(function () {
+        armResetTimer = null;
+        menuReset.textContent = resetLabel;
+      }, 4000);
+      return;
+    }
+    closeGear();
+    await fetch("api/reset?g=" + encodeURIComponent(GROUP.id), { method: "POST" });
+    list.innerHTML = "";
+  });
+
+  (async function boot() {
+    try { await loadState(); } catch (e) {}
+    await loadHistory();
+    ta.focus();
+  })();
+})();
+</script>
+</body>
+</html>
